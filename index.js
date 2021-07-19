@@ -5,7 +5,7 @@
 const express           = require('express');
 const app               = express();
 const mongoose          = require("mongoose");
-
+const bodyParser        = require("body-parser")
 const Book              = require('./models/Book')
 
 
@@ -22,6 +22,7 @@ mongoose.connect(process.env.MONGODB, {
     .catch((e) => console.log(e))
 
 
+app.use(bodyParser.urlencoded({extended:true}))
 app.use(express.static('public'));
 app.set("view engine", "hbs");
 
@@ -44,6 +45,23 @@ app.get("/books", (req, res) => {
         })
 })
 
+app.get("/books/create", (req, res) => {
+    res.render("book-create")
+})
+
+app.post("/books/create", (req, res) => {
+    const { title, author, description, rating } = req.body
+
+    Book.create({title, author, description, rating})
+        .then((libroCreado) => {
+            res.redirect("/books")
+        })
+        .catch(e => console.log(e))
+})
+
+
+// QUERY PARAMS
+
 app.get("/books/:bookId", (req, res) => {
     console.log("Este es el req.params:", req.params)
     const { bookId } = req.params
@@ -53,6 +71,64 @@ app.get("/books/:bookId", (req, res) => {
             res.render("singleBook", {
                 libro: singleBook
             })        
+        })
+        .catch(e => console.log(e))
+})
+
+// QUERY STRINGS
+
+app.get("/search", (req, res) => {
+    console.log(req.query)
+
+    const queries = req.query
+
+    res.render("search", {
+        busqueda: queries
+    })
+})
+
+
+app.post("/search", (req, res) => {
+
+    const valorFormulario = req.body
+
+    res.redirect(`/search?palabra=${valorFormulario.palabra}&nombre=${valorFormulario.nombre}&apellido=${valorFormulario.apellido}`)
+
+})
+
+app.get('/books/:bookId/edit', (req, res) => {
+    const { bookId } = req.params
+
+    Book.findById(bookId)
+        .then(libroEncontrado => {
+            console.log(libroEncontrado)
+            res.render("book-edit", {
+                libro: libroEncontrado
+            })
+        })
+        .catch((e) => {
+            console.log(e)
+        })
+})
+
+app.post("/books/:bookId/edit", (req, res) => {
+    // Paráetros de la URL (bookId)
+    const { bookId } = req.params
+    // Datos del formulario
+    const { title, description, author, rating } = req.body
+
+    Book.findByIdAndUpdate(bookId, {title, description, author, rating}, {new: true})
+        .then(libroActualizado => {
+            res.redirect(`/books/${libroActualizado.id}`)
+        })
+        .catch(e => console.log(e))
+})
+
+app.post("/books/:bookId/delete", (req, res) => {
+    const { bookId } = req.params
+    Book.findByIdAndDelete(bookId)
+        .then(() => {
+            res.redirect("/books")
         })
         .catch(e => console.log(e))
 })
